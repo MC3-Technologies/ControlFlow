@@ -1,0 +1,67 @@
+# Production configuration for Lattice integration
+# Replace PLACEHOLDER values with your actual Lattice credentials
+# For detailed setup instructions, see docs/AUTHENTICATION.md
+
+# Disable mock mode for real Lattice integration
+mock_mode: false
+
+# Service configuration
+service_name: lattice-drone-middleware-production
+environment: production
+log_level: INFO
+
+# Lattice platform configuration
+lattice:
+  # IMPORTANT: Replace with your actual Lattice instance URL
+  url: "${LATTICE_URL}"  
+  
+  # Bearer token from environment variable (supports LATTICE_BEARER_TOKEN, LATTICE_TOKEN, or ANDURIL_BEARER_TOKEN)
+  bearer_token: "${LATTICE_BEARER_TOKEN}"
+  
+  # Use gRPC for better performance
+  use_grpc: false
+  
+  # Connection settings
+  timeout: 30
+  retry_attempts: 3
+  verify_ssl: true
+
+# Single drone configuration for testing
+drones:
+- capabilities:
+  - mapping
+  - relay
+  - dropping
+  connection_string: udp://:14550
+  failsafe_action: RTL
+  geofence_enabled: true
+  id: sitl-drone-1
+  manufacturer: ArduPilot
+  max_altitude: 120.0
+  max_flight_time: 1800
+  max_speed: 20.0
+  model: SITL
+  rtl_altitude: 50.0
+  type: quadcopter
+
+# Health monitoring
+health_check_interval: 10
+telemetry_timeout: 30
+
+# Performance tuning
+max_concurrent_tasks: 10
+task_queue_size: 100
+
+# Network configuration
+grpc_max_message_size: 10485760  # 10MB
+http_timeout: 60
+
+# Safety configuration
+min_battery_percent: 20.0
+max_wind_speed: 15.0
+geofence_radius: 500.0
+emergency_rtl_altitude: 100.0
+
+# Telemetry rates (Hz)
+position_update_rate: 4.0
+status_update_rate: 1.0 

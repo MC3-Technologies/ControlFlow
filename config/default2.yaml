@@ -1,0 +1,106 @@
+# Lattice Drone Control System Configuration
+# Aligned with app-entity-visualizer and app-auto-reconnaissance patterns
+
+# Lattice platform configuration
+lattice:
+  # URL should match your sandbox environment
+  # This will be overridden by LATTICE_URL environment variable if set
+  url: "lattice-94f18.env.sandboxes.developer.anduril.com"
+  
+  # Use gRPC for better performance (HTTP is fallback)
+  use_grpc: true
+  
+  # Connection timeout in seconds
+  connection_timeout: 30
+  
+  # Retry configuration
+  max_retries: 3
+  retry_delay: 5
+
+# Entity publishing configuration
+entity_publishing:
+  # Update frequency in Hz (4Hz = 0.25 seconds between updates)
+  update_frequency: 4
+  
+  # Entity expiry time in minutes
+  entity_expiry_minutes: 10
+  
+  # Include health components
+  publish_health: true
+  
+  # Include task catalog
+  publish_task_catalog: true
+
+# Task management configuration
+task_management:
+  # Poll interval for new tasks (seconds)
+  poll_interval: 1
+  
+  # Task execution timeout (seconds)
+  default_timeout: 300
+  
+  # Enable task status updates
+  enable_status_updates: true
+  
+  # Supported task types
+  supported_tasks:
+    - "Monitor"
+    - "Investigate"
+    - "VisualId"
+    # Custom tasks (if you have custom protobuf definitions)
+    # - "Mapping"
+    # - "Relay"
+    # - "Dropping"
+
+# Drone configuration
+drones:
+  - id: "sitl-drone-1"
+    connection_string: "udp://:14550"
+    mavsdk_server: "127.0.0.1:50051"
+    system_id: 1
+    # Initial position (will be overridden by actual telemetry)
+    initial_position:
+      latitude: 33.6944
+      longitude: -117.9174
+      altitude: 100
+  
+  # Add more drones as needed
+  # - id: "sitl-drone-2"
+  #   connection_string: "udp://:14551"
+  #   mavsdk_server: "127.0.0.1:50052"
+  #   system_id: 2
+
+# Logging configuration
+logging:
+  level: "INFO"
+  format: "detailed"
+  to_file: true
+  file_path: "logs/lattice_drone_{timestamp}.log"
+  
+  # Component-specific log levels
+  components:
+    lattice_connector: "INFO"
+    entity_manager: "INFO"
+    task_manager: "INFO"
+    middleware: "INFO"
+
+# Metrics configuration (optional)
+metrics:
+  enabled: false
+  prometheus_port: 9090
+
+# Safety configuration
+safety:
+  # Geofence (meters from home position)
+  max_distance_from_home: 5000
+  
+  # Altitude limits (meters)
+  max_altitude: 500
+  min_altitude: 10
+  
+  # Battery thresholds (percentage)
+  critical_battery: 20
+  low_battery: 40
+  
+  # Return to launch on disconnect
+  rtl_on_disconnect: true

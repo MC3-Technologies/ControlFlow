@@ -1,0 +1,12 @@
+ $env:DRONE_PUBLISH_INFO_INTERVAL='900'
+
+
+
+WIN_IP=$(grep nameserver /etc/resolv.conf | awk '{print $2}')
+sim_vehicle.py -v ArduCopter -f quad --sysid 1 --out udp:${WIN_IP}:14550 --console --map
+.\start_mavsdk_server_minimal.bat  
+python -m src.lattice_drone_control.main --config .\config\default.yaml
+python -m src.lattice_drone_control.main --config config\lattice_production.yaml
+
+pip uninstall -y anduril and anduril-lattice-sdk
+pip install -e .\lattice-sdk-python

@@ -1,0 +1,20 @@
+mock_mode: true  # Disable real Lattice connection for now
+environment: development
+log_level: DEBUG
+service_name: lattice-drone-middleware-sitl
+drones:
+- capabilities:
+  - mapping
+  - relay
+  - dropping
+  connection_string: udp://:14550
+  failsafe_action: RTL
+  geofence_enabled: true
+  id: sitl-drone-1
+  manufacturer: ArduPilot
+  max_altitude: 120.0
+  max_flight_time: 1800
+  max_speed: 20.0
+  model: SITL
+  rtl_altitude: 50.0
+  type: quadcopter 

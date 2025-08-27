@@ -1,0 +1,61 @@
+# Core dependencies for Lattice-Native Drone Control System
+
+# Async support
+asyncio-mqtt==0.16.2
+aiofiles>=24.1.0
+
+# MAVLink/Drone control (ensure compatibility with grpc>=1.71)
+mavsdk>=3.6.0
+pymavlink==2.4.47
+
+# Lattice SDK - optionally installed in Docker via build-arg to avoid grpc conflicts with MAVSDK
+anduril-lattice-sdk>=1.5.0
+
+# gRPC support (align with mavsdk generated stubs)
+grpcio>=1.71.0
+grpcio-tools>=1.71.0
+certifi>=2023.11.17  # For secure gRPC connections
+
+# Configuration and environment
+pyyaml==6.0.1
+python-dotenv==1.0.0
+pydantic>=2.10
+setuptools>=61.0  # For package management
+
+# Monitoring and metrics
+prometheus-client==0.19.0
+
+# Logging
+structlog==23.2.0
+colorama==0.4.6  # For colored logs on Windows
+
+# Utilities
+click==8.1.7  # CLI support
+tenacity==8.2.3  # Retry logic
+numpy==1.26.2  # Mathematical operations
+psutil>=6.1.1  # System resource monitoring
+
+# Data handling
+dataclasses-json==0.6.3
+
+# Development dependencies (move to requirements-dev.txt in production)
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+pytest-mock==3.12.0
+
+# Type checking
+mypy==1.7.1
+types-PyYAML==6.0.12.12
+types-protobuf==4.24.0.4
+
+# Code quality
+black==23.12.0
+flake8==6.1.0
+pylint==3.0.3
+isort==5.13.2
+
+# Documentation
+sphinx==7.2.6
+sphinx-rtd-theme==2.0.0
+myst-parser==2.0.0 

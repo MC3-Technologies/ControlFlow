@@ -1,0 +1,111 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lattice-drone-control"
+version = "1.0.0"
+description = "Lattice-Native Drone Control System - Bridge between Lattice and drone flight controllers"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "Proprietary"}
+authors = [
+    {name = "Ibrahim Matar", email = "imatar@mc3technologies.com"}
+]
+keywords = ["drone", "uav", "lattice", "mavlink", "cubepilot", "autonomous"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+dependencies = [
+    "asyncio-mqtt>=0.16.2",
+    "aiofiles>=23.2.1",
+    "mavsdk>=2.0.1",
+    "pymavlink>=2.4.41",
+    "grpcio>=1.71.0",
+    "grpcio-tools>=1.71.0",
+    "protobuf>=4.25.1",
+    "pyyaml>=6.0.1",
+    "python-dotenv>=1.0.0",
+    "pydantic>=2.5.2",
+    "prometheus-client>=0.19.0",
+    "structlog>=23.2.0",
+    "colorama>=0.4.6",
+    "click>=8.1.7",
+    "tenacity>=8.2.3",
+    "numpy>=1.26.2",
+    "dataclasses-json>=0.6.3",
+    "psutil>=5.9.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.3",
+    "pytest-asyncio>=0.21.1",
+    "pytest-cov>=4.1.0",
+    "pytest-mock>=3.12.0",
+    "mypy>=1.7.1",
+    "types-PyYAML>=6.0.12.12",
+    "types-protobuf>=4.24.0.4",
+    "black>=23.12.0",
+    "flake8>=6.1.0",
+    "pylint>=3.0.3",
+    "isort>=5.13.2",
+]
+
+docs = [
+    "sphinx>=7.2.6",
+    "sphinx-rtd-theme>=2.0.0",
+    "myst-parser>=2.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/your-org/lattice-drone-control"
+Documentation = "https://lattice-drone-control.readthedocs.io"
+Repository = "https://github.com/your-org/lattice-drone-control.git"
+Issues = "https://github.com/your-org/lattice-drone-control/issues"
+
+[project.scripts]
+lattice-drone = "src.lattice_drone_control.main:main"
+sitl-swarm = "scripts.start_sitl_swarm:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["lattice_drone_control*"]
+
+[tool.setuptools.package-data]
+lattice_drone_control = ["py.typed"]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q --strict-markers"
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+
+[tool.black]
+line-length = 100
+target-version = ['py310']
+include = '\.pyi?$'
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.pylint.messages_control]
+disable = "C0330, C0326"
+
+[tool.pylint.format]
+max-line-length = "100" 
