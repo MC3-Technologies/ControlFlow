@@ -17,6 +17,12 @@ import traceback
 import sys
 from pathlib import Path
 
+# Runtime knobs
+# - LATTICE_USE_GRPC: when true, we warn if gRPC stubs are missing; otherwise we stay quiet
+# - LATTICE_SDK_LOCAL: when true, prefer the vendored lattice-sdk-python over PyPI install
+USE_GRPC_ENV = os.getenv("LATTICE_USE_GRPC", "false").lower() in ("1", "true", "yes")
+PREFER_LOCAL_REST_SDK = os.getenv("LATTICE_SDK_LOCAL", "false").lower() in ("1", "true", "yes")
+
 # gRPC imports
 try:
     from grpclib.client import Channel as GrpcChannel
@@ -27,7 +33,8 @@ except ImportError:
     GRPCError = Exception
     GRPC_AVAILABLE = False
 
-# Try to import REST Lattice SDK (v2), prefer local SDK if present
+# Try to import REST Lattice SDK (v2)
+# Default behavior: prefer the PyPI install. Fall back to vendored copy if missing.
 REST_SDK_AVAILABLE = False
 anduril = None  # type: ignore
 
@@ -45,13 +52,30 @@ def _ensure_local_anduril_on_path() -> None:
     except Exception:
         return
 
-_ensure_local_anduril_on_path()
-try:
-    import anduril  # type: ignore
-    REST_SDK_AVAILABLE = True
-except Exception:
-    anduril = None  # type: ignore
-    REST_SDK_AVAILABLE = False
+if PREFER_LOCAL_REST_SDK:
+    # Caller explicitly wants to use the vendored SDK first
+    _ensure_local_anduril_on_path()
+    try:
+        import anduril  # type: ignore
+        REST_SDK_AVAILABLE = True
+    except Exception:
+        anduril = None  # type: ignore
+        REST_SDK_AVAILABLE = False
+else:
+    # Prefer PyPI install; if unavailable, fall back to vendored SDK
+    try:
+        import anduril  # type: ignore
+        REST_SDK_AVAILABLE = True
+    except Exception:
+        anduril = None  # type: ignore
+        REST_SDK_AVAILABLE = False
+        _ensure_local_anduril_on_path()
+        try:
+            import anduril  # type: ignore
+            REST_SDK_AVAILABLE = True
+        except Exception:
+            anduril = None  # type: ignore
+            REST_SDK_AVAILABLE = False
 
 # Try to import Lattice SDK
 # NOTE: The linter may show errors here because it doesn't have access to the
@@ -146,8 +170,11 @@ try:
     # For development, we'll skip TaskCatalog when real SDK doesn't provide it
     
 except ImportError:
-    # Fallback for development/testing when SDK is not available
-    logging.warning("Lattice SDK not available, using mock implementation")
+    # Fallback for development/testing when gRPC stubs are not available
+    if USE_GRPC_ENV:
+        logging.warning("gRPC stubs for Lattice SDK not available; using mock implementation")
+    else:
+        logging.debug("gRPC stubs for Lattice SDK not available; proceeding with REST-only mode")
     
     # Mock classes that mimic the SDK structure
     class EntityManagerApiStub:

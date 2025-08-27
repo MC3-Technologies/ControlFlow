@@ -33,8 +33,10 @@ class MAVSDKConnector:
         else:
             mavsdk_port = 50051  # Default for single drone setup
         
-        # Create System with server address
-        self.system = System(mavsdk_server_address="127.0.0.1", port=mavsdk_port)
+        # Create System with server address (configurable for Docker/remote)
+        import os as _os
+        server_host = _os.getenv("MAVSDK_SERVER_HOST", "127.0.0.1")
+        self.system = System(mavsdk_server_address=server_host, port=mavsdk_port)
         self.is_connected = False
         self.is_armed = False
         

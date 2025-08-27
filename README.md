@@ -51,7 +51,7 @@ This middleware requires access to Anduril's Lattice platform. The default confi
    - API documentation and support
 
 3. **Update Configuration**: Once you have credentials:
-   - `.env`: Add your `LATTICE_TOKEN`
+   - `.env`: Add your `LATTICE_BEARER_TOKEN`
              Add your `LATTICE_URL`
 
 The code includes fallback mock classes for development/testing when you don't have platform credentials yet.
@@ -81,7 +81,7 @@ pip install -r requirements.txt
 4. Set up environment variables:
 ```bash
 cp .env.example .env
-# Edit .env and add your LATTICE_TOKEN
+# Edit .env and add your LATTICE_BEARER_TOKEN, LATTICE_URL, and SANDBOXES_TOKEN
 ```
 
 ## Configuration
@@ -277,15 +277,80 @@ Using Docker Compose (recommended):
 docker compose up -d
 ```
 
+Environment flags
+
+- LATTICE_BEARER_TOKEN: Bearer token for Lattice authentication (preferred variable name)
+- LATTICE_URL: Base hostname for your Lattice instance (e.g., lattice-xxxx.env.sandboxes.developer.anduril.com)
+- MAVSDK_SERVER_HOST: Hostname/IP of MAVSDK server as seen from container. Use `host.docker.internal` on Windows/Mac; use host IP on Linux
+- LATTICE_USE_GRPC: Set to `true` only if you have Anduril gRPC stubs and want gRPC. When false/unset, missing gRPC logs are demoted to debug
+- LATTICE_SDK_LOCAL: Set to `true` to prefer the vendored `lattice-sdk-python` copy over the pip-installed SDK. Default prefers pip and falls back to vendored if present
+
+Using an env-file (recommended)
+
+1) Create an env file at `docker/middleware.env` (or copy from `docker/middleware.env.example` if present):
+
+```ini
+# docker/middleware.env
+LATTICE_BEARER_TOKEN=your_bearer_token
+# Required for sandboxes.* environments
+SANDBOXES_TOKEN=your_sandboxes_token
+LATTICE_URL=lattice-XXXX.env.sandboxes.developer.anduril.com
+
+# Networking from container to host MAVSDK server
+MAVSDK_SERVER_HOST=host.docker.internal
+
+# Runtime toggles
+LATTICE_USE_GRPC=false
+# Prefer pip SDK (default); set to true to force vendored SDK if present
+LATTICE_SDK_LOCAL=false
+```
+
+2) Build the image:
+
+```bash
+docker build -f docker/Dockerfile.middleware -t lattice-drone-middleware .
+```
+
+3a) Run with env-file (bash):
+
+```bash
+docker run -d \
+  --name lattice-drone-middleware \
+  --env-file docker/middleware.env \
+  -p 9090:9090 \
+  -v $(pwd)/config:/app/config:ro \
+  -v $(pwd)/logs:/app/logs \
+  lattice-drone-middleware \
+  python -m src.lattice_drone_control.main --config config/lattice_production.yaml
+```
+
+3b) Run with env-file (Windows PowerShell):
+
+```powershell
+docker run -d `
+  --name lattice-drone-middleware `
+  --env-file docker\middleware.env `
+  -p 9090:9090 `
+  -v ${PWD}\config:/app/config:ro `
+  -v ${PWD}\logs:/app/logs `
+  lattice-drone-middleware `
+  python -m src.lattice_drone_control.main --config config/lattice_production.yaml
+```
+
 Manual build/run:
 ```bash
 docker build -f docker/Dockerfile.middleware -t lattice-drone-middleware .
 docker run -d \
   --name lattice-drone-middleware \
-  -e LATTICE_TOKEN=your_token \
+  -e LATTICE_BEARER_TOKEN=your_token \
+  -e SANDBOXES_TOKEN=your_sandboxes_token \
+  -e LATTICE_URL=lattice-xxxx.env.sandboxes.developer.anduril.com \
   -e METRICS_ENABLED=true \
   -e METRICS_PORT=9090 \
   -e MAVSDK_SERVER_HOST=host.docker.internal \
+  -e LATTICE_USE_GRPC=false \
+  # uncomment if you want to force the vendored SDK copy
+  # -e LATTICE_SDK_LOCAL=false \
   -p 9090:9090 \
   -v $(pwd)/config:/app/config:ro \
   -v $(pwd)/logs:/app/logs \

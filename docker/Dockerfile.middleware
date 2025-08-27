@@ -1,0 +1,42 @@
+# Lattice-Native Drone Control Middleware Docker Image
+FROM python:3.10-slim
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# Copy requirements first for better caching
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy source code
+COPY src/ ./src/
+COPY config/ ./config/
+COPY pyproject.toml .
+COPY README.md .
+
+# Install the package
+RUN pip install -e .
+
+# Create logs directory
+RUN mkdir -p logs
+
+# Environment variables
+ENV PYTHONUNBUFFERED=1
+ENV LOG_LEVEL=INFO
+
+# Expose Prometheus metrics port
+EXPOSE 9090
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD python -c "import requests; requests.get('http://localhost:9090/metrics')" || exit 1
+
+# Run the middleware
+CMD ["python", "-m", "src.lattice_drone_control.main"] 

@@ -89,6 +89,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+.venv*/
 
 # Spyder project settings
 .spyderproject
@@ -134,6 +135,7 @@ mavsdk_server/mavsdk_server.exe
 .env
 .env.local
 .env.*.local
+docker/middleware.env
 
 # Simulation files
 *.tlog
