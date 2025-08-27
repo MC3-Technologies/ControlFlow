@@ -3,12 +3,12 @@ REM Start MAVSDK Servers for Drone Swarm
 
 echo Starting MAVSDK servers...
 
-REM Start servers for 5 drones
-start "MAVSDK Server 1" mavsdk_server\mavsdk_server.exe -p 50040 udp://:14540
-start "MAVSDK Server 2" mavsdk_server\mavsdk_server.exe -p 50041 udp://:14541
-start "MAVSDK Server 3" mavsdk_server\mavsdk_server.exe -p 50042 udp://:14542
-start "MAVSDK Server 4" mavsdk_server\mavsdk_server.exe -p 50043 udp://:14543
-start "MAVSDK Server 5" mavsdk_server\mavsdk_server.exe -p 50044 udp://:14544
+REM Start servers for 5 drones (use udpin:// to avoid deprecation warnings)
+start "MAVSDK Server 1" mavsdk_server\mavsdk_server.exe -p 50040 udpin://0.0.0.0:14540
+start "MAVSDK Server 2" mavsdk_server\mavsdk_server.exe -p 50041 udpin://0.0.0.0:14541
+start "MAVSDK Server 3" mavsdk_server\mavsdk_server.exe -p 50042 udpin://0.0.0.0:14542
+start "MAVSDK Server 4" mavsdk_server\mavsdk_server.exe -p 50043 udpin://0.0.0.0:14543
+start "MAVSDK Server 5" mavsdk_server\mavsdk_server.exe -p 50044 udpin://0.0.0.0:14544
 
 echo MAVSDK servers started!
 echo.

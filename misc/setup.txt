@@ -10,3 +10,22 @@ python -m src.lattice_drone_control.main --config config\lattice_production.yaml
 
 pip uninstall -y anduril and anduril-lattice-sdk
 pip install -e .\lattice-sdk-python
+
+
+
+sudo apt update && sudo apt install -y python3-venv
+python3 -m venv venv    # or: python -m venv venv
+source venv/bin/activate
+python -m pip install -r requirements.txt
+
+
+py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+
+
+
+      docker run -d --name lattice-drone-middleware --env-file docker\middleware.env `
+        -p 9090:9090 -v ${PWD}\config:/app/config:ro -v ${PWD}\logs:/app/logs `
+        lattice-drone-middleware `
+        python -m src.lattice_drone_control.main --config config/lattice_production.yaml
