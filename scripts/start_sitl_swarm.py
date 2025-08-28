@@ -1,7 +1,16 @@
 #!/usr/bin/env python3
 """
 Start SITL Drone Swarm for Testing
-Launches multiple PX4 SITL instances for development and testing
+Launch multiple ArduPilot SITL (ArduCopter) instances.
+
+WSL/Windows guidance:
+- When running in WSL and MAVSDK server runs on Windows, pass --windows-ip <IP>
+  where <IP> is the Windows host IP visible from WSL:
+    WINDOWS_IP=$(grep nameserver /etc/resolv.conf | awk '{print $2}')
+    python scripts/start_sitl_swarm.py -n 2 --windows-ip $WINDOWS_IP
+- Then in Windows PowerShell start matching MAVSDK servers:
+    start "MAVSDK 1" mavsdk_server\mavsdk_server.exe -p 50040 udpin://0.0.0.0:14540
+    start "MAVSDK 2" mavsdk_server\mavsdk_server.exe -p 50041 udpin://0.0.0.0:14541
 """
 
 import subprocess
@@ -18,9 +27,10 @@ from pathlib import Path
 class SITLSwarmManager:
     """Manages multiple SITL drone instances"""
     
-    def __init__(self, num_drones: int = 5, base_port: int = 14540):
+    def __init__(self, num_drones: int = 5, base_port: int = 14540, windows_ip: str | None = None):
         self.num_drones = num_drones
         self.base_port = base_port
+        self.windows_ip = windows_ip
         self.processes: List[subprocess.Popen] = []
         self.config_file = Path("config/default.yaml")
         
@@ -94,16 +104,20 @@ class SITLSwarmManager:
     
     def start_ardupilot_sitl(self, instance: int) -> subprocess.Popen:
         """Start ArduPilot SITL instance for CubePilot"""
+        target_ip = self.windows_ip if self.windows_ip else "127.0.0.1"
+        target = f"{target_ip}:{self.base_port + instance}"
         cmd = [
             "sim_vehicle.py",
             "-v", "ArduCopter",
             "-I", str(instance),
-            "--out", f"127.0.0.1:{self.base_port + instance}",
+            "--out", target,
             "--no-extra-ports",
             "--model", "quad"
         ]
         
-        print(f"Starting ArduPilot SITL instance {instance} on port {self.base_port + instance}...")
+        print(
+            f"Starting ArduPilot SITL instance {instance} sending MAVLink to {target}"
+        )
         
         try:
             process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -171,6 +185,22 @@ class SITLSwarmManager:
         print("\nDrone connections:")
         for i in range(self.num_drones):
             print(f"  - Drone {i+1}: udp://:{self.base_port + i}")
+        
+        # Guidance for MAVSDK on Windows
+        print("\nNext steps:")
+        if self.windows_ip:
+            print("  In Windows PowerShell, start matching MAVSDK servers:")
+            for i in range(self.num_drones):
+                udp_port = self.base_port + i
+                grpc_port = 50040 + i
+                print(
+                    f"    start \"MAVSDK {i+1}\" mavsdk_server\\mavsdk_server.exe -p {grpc_port} udpin://0.0.0.0:{udp_port}"
+                )
+        else:
+            print("  If MAVSDK server runs on Windows, rerun with --windows-ip <Windows_IP> so SITL sends to the host.")
+            print("  Find the IP in WSL:")
+            print("    WINDOWS_IP=$(grep nameserver /etc/resolv.conf | awk '{print $2}')")
+            print("    python scripts/start_sitl_swarm.py -n", self.num_drones, "--windows-ip $WINDOWS_IP")
         
         print("\nPress Ctrl+C to stop the swarm...")
         
@@ -242,6 +272,12 @@ def main():
         action="store_true",
         help="Use Gazebo simulator instead of JMAVSim"
     )
+    parser.add_argument(
+        "--windows-ip",
+        type=str,
+        default=None,
+        help="Windows host IP to send MAVLink to (for WSL -> Windows routing). If omitted, uses 127.0.0.1"
+    )
     
     args = parser.parse_args()
     
@@ -251,7 +287,7 @@ def main():
         sys.exit(1)
     
     # Create and start swarm manager
-    manager = SITLSwarmManager(args.num_drones, args.base_port)
+    manager = SITLSwarmManager(args.num_drones, args.base_port, args.windows_ip)
     
     # Handle signals
     def signal_handler(sig, frame):

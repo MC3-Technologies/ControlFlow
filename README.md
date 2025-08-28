@@ -30,11 +30,11 @@ Drone Flight Controllers (CubePilot/ArduPilot)
 ## Prerequisites
 
 - Python 3.10+
-- Windows 11 (development) or Linux (production)
-- ArduPilot SITL (for testing)
+- Windows 11 with WSL 2 (for the recommended dev workflow) or Linux
+- ArduPilot SITL tools (for testing; installed inside WSL/Linux)
 - Docker (optional, for containerized deployment)
-- Lattice SDK (available on PyPI: `pip install anduril-lattice-sdk`)
-- Lattice platform credentials (contact Anduril for access)
+- Lattice SDK (installed via requirements)
+- Lattice platform credentials if using production config
 
 ## Important: Lattice Platform Access
 
@@ -60,8 +60,8 @@ The code includes fallback mock classes for development/testing when you don't h
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/hima700/lattice-drone-control.git
-cd lattice-drone-control
+git clone https://github.com/MC3-Technologies/ControlFlow.git
+cd ControlFlow
 ```
 
 2. Create a virtual environment:
@@ -86,7 +86,7 @@ cp .env.example .env
 
 ## Configuration
 
-Edit `config/default.yaml` to configure:
+Edit `config/default.yaml` or `config/lattice_production.yaml`to configure:
 - Lattice connection settings
 - Drone connection strings
 - Safety parameters
@@ -108,89 +108,81 @@ drones:
 
 ## Running the Middleware
 
-### Development Mode
+### SITL prerequisites and notes
 
-1. Start ArduPilot SITL instances:
+- ArduPilot SITL must be installed in WSL/Linux. Install via the official docs below. The quick-start assumes `sim_vehicle.py` is on your PATH in WSL.
+- MAVSDK server binary is included under `mavsdk_server/`. If missing, run:
+  ```powershell
+  python scripts\setup_mavsdk_server.py
+  ```
+- `scripts/start_px4_sitl_swarm.py` is experimental and primarily demonstrates port wiring; use ArduPilot for end-to-end testing.
+
+### Install references
+
+- ArduPilot SITL (Linux/WSL): see `https://ardupilot.org/dev/docs/using-sitl-for-ardupilot-testing.html` and the Linux build instructions at `https://ardupilot.org/dev/docs/building-setup-linux.html`.
+- MAVProxy (required by many ArduPilot workflows): see `https://ardupilot.github.io/MAVProxy/html/index.html` → Installation for your platform.
+
+### Development vs Production
+
+- **Development mode**: run against SITL, optional mock Lattice; fast iteration, verbose logging, local files. Use `config\default.yaml`.
+- **Production mode**: connect to real Lattice and real airframes; controlled logging, Dockerized runtime, persistent configuration. Use `config\lattice_production.yaml`.
+
+The only difference is which config and environment variables you provide. Code paths are the same.
+
+### Windows + WSL Quick Start (Single Drone)
+
+1) In WSL, start ArduPilot SITL and stream MAVLink to Windows:
 ```bash
-python scripts/start_sitl_swarm.py -n 5
+WINDOWS_IP=$(grep nameserver /etc/resolv.conf | awk '{print $2}')
+sim_vehicle.py -v ArduCopter -f quad --sysid 1 \
+               --out udp:${WINDOWS_IP}:14550 \
+               --console --map
 ```
 
-2. Run the middleware:
-```bash
-python -m src.lattice_drone_control.main
+2) In Windows PowerShell, start MAVSDK server (single drone: gRPC 50050, UDP 14550):
+```powershell
+./start_mavsdk_server_minimal.bat
 ```
 
-### Production Mode
+3) Run the middleware (HTTP/REST; keep `LATTICE_USE_GRPC=false`).
 
-Using Docker:
-```bash
-docker-compose up -d
+Docker (recommended):
+See [Docker Deployment](#docker-deployment) below to set up the image and env-file first.
+```powershell
+# Build once (from repo root) if you haven't already
+docker build -f docker\Dockerfile.middleware -t lattice-drone-middleware .
+
+# Run with env-file; edit docker\middleware.env first
+docker run -d `
+  --name lattice-drone-middleware `
+  --env-file docker\middleware.env `
+  -p 9090:9090 `
+  -v ${PWD}\config:/app/config:ro `
+  -v ${PWD}\logs:/app/logs `
+  lattice-drone-middleware `
+  python -m src.lattice_drone_control.main --config config/lattice_production.yaml
 ```
 
-Or as a systemd service:
-```bash
-sudo systemctl start lattice-drone-middleware
+Bare Python (alternative):
+```powershell
+# Development (mock Lattice)
+python -m src.lattice_drone_control.main --config config\default.yaml
+
+# Production (real Lattice)
+python -m src.lattice_drone_control.main --config config\lattice_production.yaml
 ```
 
-### SITL Quick-Start (Single-Drone, Local)
+4) Optional checks and sample tasks:
+```powershell
+python scripts\health_check.py --config config\default.yaml
+python scripts\test_tasks.py
+```
 
-Follow this sequence whenever you want to bring the full stack up on a developer workstation.
+Tip: The `time moved backwards` messages in MAVProxy are harmless.
 
-1. **Start ArduPilot SITL inside WSL**  
-   Find the Windows-host IP the WSL VM can reach and launch the simulator:
-   ```bash
-   WINDOWS_IP=$(grep nameserver /etc/resolv.conf | awk '{print $2}')
-   sim_vehicle.py -v ArduCopter -f quad --sysid 1 \
-                  --out udp:${WINDOWS_IP}:14550 \
-                  --console --map          # omit --map if NumPy/OpenCV mismatch
-   ```
-   The white *ArduCopter* console window will appear and begin streaming MAVLink on UDP 14540.
+### Multi-Drone
 
-2. **Start MAVSDK-server on Windows** (PowerShell, project root):
-   ```powershell
-   .\start_mavsdk_server_minimal.bat
-   ```
-   Wait for the line `System discovered` – this confirms MAVSDK-server received the MAVLink stream and opened gRPC 50040.
-
-3. **Run the middleware in mock-mode** (no real Lattice creds required):
-   ```powershell
-   python -m src.lattice_drone_control.main --config config\default.yaml
-   ```
-   You should see `Connected to drone sitl-drone-1` in the log.
-
-4. **Verify / exercise**
-   *Health check*
-   ```powershell
-   python scripts\health_check.py --config config\default.yaml   # run from repo root
-   ```
-   *Sample autonomous tasks*
-   ```powershell
-   python scripts\test_tasks.py
-   ```
-
-5. **Manual control (optional)**  
-   From the ArduPilot console:
-   ```
-   mode GUIDED
-   arm throttle
-   takeoff 5
-   ```
-
-> Tip: the repeated `time moved backwards` lines in MAVProxy are harmless.  Run SITL without MAVProxy (`--no-mavproxy`) if you want an entirely clean console.
-
-### Multi-Drone SITL Swarm
-
-1. Launch multiple SITL instances:
-   ```bash
-   python scripts/start_px4_sitl_swarm.py -n 3          # or start_sitl_swarm.py
-   ```
-2. Start matching MAVSDK-servers:
-   ```powershell
-   .\start_mavsdk_servers.bat                          # spawns ports 50040-50044
-   ```
-3. Add additional drone blocks to `config/default.yaml` with `connection_string` ports 14541…14544 and restart the middleware.
-
-Now you can issue mapping/relay/dropping tasks to any of the simulated drones.
+Not currently supported in this guide. Focus is single-drone using `start_mavsdk_server_minimal.bat`. Multi-drone instructions is in progress and will be added once stabilized.
 
 ## Task Types
 
@@ -200,17 +192,19 @@ Autonomous area survey with configurable patterns:
 - Configurable overlap and altitude
 - Automatic photo capture
 
-### Relay Task
+### Relay Task (in progress)
 Communication relay positioning:
 - Maintain specific position for network extension
 - Automatic position correction
 - Configurable duration
 
-### Dropping Task
+### Dropping Task (in progress)
 Payload delivery to specified locations:
 - Multiple drop points support
 - Safe altitude approach
 - Wind condition checking
+
+Note: At the moment, only the Mapping task is fully functional; Relay and Dropping are in progress.
 
 ## API Usage
 
@@ -248,21 +242,7 @@ Structured JSON logging with levels:
 
 ## Development
 
-### Running Tests
-```bash
-pytest tests/
-pytest tests/unit/ -v
-pytest tests/integration/ --cov
-```
-
-### Code Quality
-```bash
-black src/
-flake8 src/
-mypy src/
-```
-
-### SITL Testing
+### SITL Testing (In progress)
 ```bash
 # Run specific SITL test scenarios
 python tests/sitl/test_multi_drone.py
@@ -272,10 +252,7 @@ python tests/sitl/test_multi_drone.py
 
 ### Docker Deployment
 
-Using Docker Compose (recommended):
-```bash
-docker compose up -d
-```
+Create `docker/middleware.env` from the provided example and edit token/URL values.
 
 Environment flags
 
@@ -357,17 +334,7 @@ docker run -d \
   lattice-drone-middleware
 ```
 
-PowerShell helpers (Windows):
-```powershell
-./scripts/docker_build.ps1
-./scripts/docker_up.ps1
-```
 
-### Kubernetes Deployment
-```bash
-kubectl apply -f k8s/deployment.yaml
-kubectl apply -f k8s/service.yaml
-```
 
 ## Safety Features
 
@@ -408,7 +375,7 @@ python scripts/verify_sdk.py
 
 ## Performance
 
-- Supports 5 concurrent drones (tested)
+- Supports 5 concurrent drones (in-testing)
 - Architected for 50+ drones
 - 4Hz telemetry updates
 - <100ms command acknowledgment
